@@ -1,0 +1,9 @@
+An apocalyptic game, written in javascript using WebGL. It works fine on the latest version Firefox and Chrome, but the framerate is better in Firefox.
+
+Your task is to control the satellite to send power to the earth and the space craft leaving it. If you missfire then the deadly laser will produce deadly neurotoxins, which lower your maximum possible score.
+
+I used the PhiloGL framework to produce this after first trying three.js and finding it to be impossible to use more than one texture per shader. PhiloGL was not much better, there appears to be some bugs with its vec4.distTo method and I had to make numerous other small changes to support multiple shaders.
+
+All the animation/events are framelocked, so people with slower computers will find this game easier to play.
+
+The sound is sometimes a bit erratic. The HTML5 implementation for audio sometimes lags.
