@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+	<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+	<meta charset="utf-8">
+
+	<title>You Cannot Beat This Game</title>
+
+	<script type="text/javascript" src="js/PhiloGL.js"></script>
+	<script type="text/javascript" src="js/game.js"></script>
+	<script type="text/javascript" src="js/stats.js"></script>
+
+	<style type="text/css">
+		body {
+			background:#000000;
+			color:#dddddd;
+			font-family:helvetica, arial;
+			margin: 0px 0px 0px 0px;
+		}
+		p, li {
+			font-size:small;
+		}
+	</style>
+</head>
+
+<body onload="start_end();">
+	<script type="x-shader/x-vertex" id="sat_vert">
+		#ifdef GL_ES
+			precision highp float;
+		#endif
+		attribute vec3 position;
+		attribute vec3 normal;
+		attribute vec2 texCoord1;
+
+		uniform mat4 modelViewMatrix;
+		uniform mat4 projectionMatrix;
+
+		varying vec2 vTexCoord;
+	
+		void main()
+		{
+			vTexCoord = texCoord1;
+			gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+		}
+	</script>
+	<script type="x-shader/x-fragment" id="sat_frag">
+		#ifdef GL_ES
+			precision highp float;
+		#endif
+
+		varying vec2 vTexCoord;
+		uniform sampler2D sampler1;
+
+		uniform bool enablePicking;
+		uniform vec3 pickColor;
+
+		void main()
+		{
+			if (!enablePicking) {
+				gl_FragColor = texture2D(sampler1, vTexCoord);
+			} else {
+				if (texture2D(sampler1, vTexCoord).a < 1.0) {
+					gl_FragColor = vec4(pickColor, 0.0);
+				} else {
+					gl_FragColor = vec4(pickColor, 1.0);
+				}
+			}
+		}
+	</script>
+	<script type="x-shader/x-vertex" id="stars_vert">
+		#ifdef GL_ES
+			precision highp float;
+		#endif
+		attribute vec3 position;
+		attribute vec4 color;
+
+		uniform mat4 modelViewMatrix;
+		uniform mat4 projectionMatrix;
+
+		varying vec4 vColor;
+	
+		void main()
+		{
+			vColor = color;
+			gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+		}
+	</script>
+	<script type="x-shader/x-fragment" id="stars_frag">
+		#ifdef GL_ES
+			precision highp float;
+		#endif
+
+		varying vec4 vColor;
+
+		uniform bool enablePicking;
+		uniform vec3 pickColor;
+
+		void main()
+		{
+			if (!enablePicking) {
+				gl_FragColor = vColor;
+			} else {
+				gl_FragColor = vec4(pickColor, 1.0);
+			}
+		}
+	</script>
+	<script type="x-shader/x-vertex" id="earth_vert">
+		#ifdef GL_ES
+			precision highp float;
+		#endif
+		attribute vec3 position;
+		attribute vec3 normal;
+		attribute vec2 texCoord1;
+
+		uniform mat4 modelViewMatrix;
+		uniform mat4 projectionMatrix;
+	
+		varying vec3 fNormal;
+		varying vec2 vTexCoord;
+
+		void main()
+		{
+			gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+			vTexCoord = vec2(1.0 - texCoord1.x, 1.0 - texCoord1.y);
+			fNormal = normal;
+		}
+	</script>
+	<script type="x-shader/x-fragment" id="earth_frag">
+		#ifdef GL_ES
+			precision highp float;
+		#endif
+
+		uniform sampler2D sampler1;
+		uniform sampler2D sampler2;
+		uniform vec3 sun_position;
+
+		uniform bool enablePicking;
+		uniform vec3 pickColor;
+
+		varying vec3 fNormal;
+		varying vec2 vTexCoord;
+
+		void main()
+		{
+			if (!enablePicking) {
+				vec3 direction = normalize(sun_position);
+				float intensity = dot(normalize(fNormal), direction);
+				gl_FragColor = vec4(texture2D(sampler2, vTexCoord).rgb * (1.0 - intensity) + texture2D(sampler1, vTexCoord).rgb * intensity, 1.0);
+			} else {
+				gl_FragColor = vec4(pickColor, 1.0);
+			}
+		}
+	</script>
+	<canvas id="game-canvas" style="float:left; border: none;" width="900" height="600"></canvas>
+	<div>
+		<p>Estimated Time to Impact: <span id="timer">180</span></p>
+		<h2>Scores</h2>
+		<p>Total Population: <span id="population">?</span></p>
+		<ul>
+			<li>Asia: <span id="as">?</span></li>
+			<li>Africa: <span id="af">?</span></li>
+			<li>Europe: <span id="eu">?</span></li>
+			<li>North America: <span id="na">?</span></li>
+			<li>South America: <span id="sa">?</span></li>
+			<li>Australia: <span id="au">?</span></li>
+		</ul>
+		<p>Saved: <span id="saved">0</span></p>
+		<p>Ground Power Level: <span id="power">0</span></p>
+		<h2>Instructions</h2>
+		<p>An asteroid is heading to earth and you must direct the orbiting satelite, Prime Generator, to help save as much of the world's population as possible.</p>
+		<p>To save the people, you must transmit power down to the <strong style="color:#ffb00f;">yellow</strong> power recievers when they spin past.</p>
+		<p>When there is enough power, a space craft will randomly launch from one of the <strong style="color:#ffffff;">launch pads</strong>. A space craft with 100000 souls aboard will launch, the maximum takeoff weight.</p>
+		<p>If you click on one of the space craft as it is leaving, then the space ship is transmit the extra energy to put into orbit and steadily teleport more people aboard. Watch out it does not collide!</p>
+		<audio id="music" controls="controls" preload="meta">
+			<source src="audio/air_bach.mp3" type="audio/mpeg" />
+			<source src="audio/air_bach.ogg" type="audio/ogg" />
+		</audio>
+		<h2>Credits</h2>
+		<ul>
+			<li>Code: Mark Goodall &lt;markit AT <a href="http://seken.co.uk">seken.co.uk</a>&gt;</li>
+			<li>Imagery: NASA &lt;<a href="http://visibleearth.nasa.gov">Visable Earth</a>&gt;</li>
+			<li>BG music(not included in the competition): Bach - Air on the G String, Joel Belov (violin) and Robert Gayler (piano)</li>
+		</ul>
+	</div>
+	<audio id="laser" preload="auto">
+		<source src="audio/laser.mp3" type="audio/mpeg" />
+		<source src="audio/laser.ogg" type="audio/ogg" />
+	</audio>
+	
+	<audio id="launch" preload="auto">
+		<source src="audio/launch.mp3" type="audio/mpeg" />
+		<source src="audio/launch.ogg" type="audio/ogg" />
+	</audio>
+
+	<audio id="hit" preload="auto">
+		<source src="audio/hit.mp3" type="audio/mpeg" />
+		<source src="audio/hit.ogg" type="audio/ogg" />
+	</audio>
+</body>
+</html>
